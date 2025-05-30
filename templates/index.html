@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tabularum Data Alchemist</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/min/dropzone.min.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background: url('/static/bg.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+        .marquee-wrapper {
+            overflow: hidden;
+            white-space: nowrap;
+            background: rgba(255,255,255,0.8);
+            padding: 10px 0;
+        }
+        .marquee-track {
+            display: inline-block;
+            animation: marquee 15s linear infinite;
+        }
+        @keyframes marquee {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-100%, 0); }
+        }
+        .heading {
+            text-align: center;
+            font-size: 2.5em;
+            color: #fff;
+            padding-top: 30px;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px #000;
+        }
+        #file-dropzone {
+            margin: 20px auto;
+            width: 50%;
+            max-width: 400px;
+            border: 2px dashed #fff;
+            padding: 20px;
+            background-color: rgba(255,255,255,0.7);
+            border-radius: 8px;
+            text-align: center;
+            color: #333;
+        }
+        #uploadProgress, #analysisProgress {
+            width: 50%;
+            display: none;
+            margin: 10px auto;
+        }
+        #uploadMessage {
+            text-align: center;
+            color: #fff;
+            display: none;
+        }
+        #beginBtn {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            background-color: purple;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            cursor: pointer;
+        }
+        footer {
+            background-color: #f0f0f0;
+            color: #555;
+            text-align: center;
+            padding: 10px 0;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            font-size: 0.9em;
+        }
+        /* Modal styles for confirming columns */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+        }
+        .modal-content h2 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Infinite marquee -->
+    <div class="marquee-wrapper">
+        <div class="marquee-track">
+            <span>AI- Agent007, reliable solutions, consensus logic, Groq, Huggingface, Gemini, Making solutions easier, Reducing operational costs, Deriving insights&nbsp;&nbsp;&nbsp;</span>
+            <span>AI- Agent007, reliable solutions, consensus logic, Groq, Huggingface, Gemini, Making solutions easier, Reducing operational costs, Deriving insights</span>
+        </div>
+    </div>
+
+    <!-- Centered heading -->
+    <div class="heading">Tabularum Data Alchemist</div>
+
+    <!-- File dropzone -->
+    <form action="/upload" class="dropzone" id="file-dropzone" method="POST" enctype="multipart/form-data">
+        <div class="fallback">
+            <input name="file" type="file" accept=".xls,.xlsx" />
+        </div>
+        <p>Drag and drop your .XLS spreadsheet here.</p>
+    </form>
+
+    <!-- Upload progress -->
+    <progress id="uploadProgress" max="100"></progress>
+    <p id="uploadMessage"></p>
+    
+    <!-- Analysis progress -->
+    <progress id="analysisProgress" max="100"></progress>
+
+    <!-- Begin Analysis button -->
+    <button id="beginBtn">Begin Alchemy - Analyze</button>
+
+    <!-- Modal for confirming columns -->
+    <div id="columnsModal" class="modal">
+      <div class="modal-content">
+          <h2>Confirm Columns for Analysis</h2>
+          <div id="columnsContainer"></div>
+          <button id="confirmColumnsBtn">Confirm</button>
+      </div>
+    </div>
+
+    <!-- Fixed footer -->
+    <footer>
+        Built by Imraan Jacobs - Jacobs Dynamic Development
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.3/min/dropzone.min.js"></script>
+    <script>
+        // Configure Dropzone for auto-upload
+        Dropzone.options.fileDropzone = {
+            url: "/upload",
+            autoProcessQueue: true,
+            acceptedFiles: '.xls,.xlsx',
+            maxFilesize: 20,
+            init: function() {
+                var myDropzone = this;
+                this.on("uploadprogress", function(file, progress) {
+                    document.getElementById("uploadProgress").style.display = "block";
+                    document.getElementById("uploadProgress").value = progress;
+                });
+
+                // Add a 'success' event listener to process the response
+                this.on("success", function(file, response) {
+                    var msg = document.getElementById("uploadMessage");
+                    msg.style.display = "block";
+                    msg.innerText = "Upload complete";
+
+                    // Process the response directly from the Dropzone upload
+                    // The response is already a parsed JSON object if your backend returns JSON with the correct Content-Type header
+                    const data = response;
+
+                    if (data.status === "success" && data.columns) {
+                        var container = document.getElementById("columnsContainer");
+                        container.innerHTML = "";
+                        data.columns.forEach(function(col) {
+                            var label = document.createElement("label");
+                            label.style.marginRight = "10px";
+                            var checkbox = document.createElement("input");
+                            checkbox.type = "checkbox";
+                            checkbox.value = col;
+                            checkbox.checked = true;
+                            checkbox.name = "selected_columns";
+                            label.appendChild(checkbox);
+                            label.appendChild(document.createTextNode(" " + col));
+                            container.appendChild(label);
+                            container.appendChild(document.createElement("br"));
+                        });
+                        document.getElementById("columnsModal").style.display = "block";
+                    } else if (data.status === "error") {
+                         // Display the error message from the backend
+                         alert("Upload error: " + data.message);
+                         msg.innerText = "Upload failed: " + data.message;
+                    }
+                });
+
+                 this.on("error", function(file, message) {
+                    var msg = document.getElementById("uploadMessage");
+                    msg.style.display = "block";
+                    msg.innerText = "Upload failed: " + message;
+                    console.error("Dropzone upload error:", message);
+                    alert("Upload failed: " + message);
+                 });
+
+            }
+        };
+
+        // Confirm columns modal
+        document.getElementById("confirmColumnsBtn").addEventListener("click", function() {
+            var checkboxes = document.getElementsByName("selected_columns");
+            var selected = [];
+            for (var i = 0; i < checkboxes.length; i++) {
+                if (checkboxes[i].checked) {
+                    selected.push(checkboxes[i].value);
+                }
+            }
+            fetch("/confirm_columns", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ selected_columns: selected })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "success") {
+                    document.getElementById("columnsModal").style.display = "none";
+                }
+            })
+            .catch(error => console.error("Error confirming columns:", error));
+        });
+
+        // Begin Analysis Button
+        document.getElementById("beginBtn").addEventListener("click", function() {
+            var uploadMsg = document.getElementById("uploadMessage").innerText;
+            if (uploadMsg !== "Upload complete") {
+                alert("Please complete file upload first.");
+                return;
+            }
+            var analysisProgress = document.getElementById("analysisProgress");
+            analysisProgress.style.display = "block";
+            analysisProgress.value = 0;
+            var progress = 0;
+            var interval = setInterval(function(){
+                progress += 5;
+                analysisProgress.value = progress;
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    fetch("/analyze", { method: "POST" })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === "success") {
+                                window.location.href = "/result";
+                            } else {
+                                alert("Error during analysis: " + data.message);
+                            }
+                        })
+                        .catch(error => console.error("Analysis error:", error));
+                }
+            }, 150);
+        });
+    </script>
+</body>
+</html>

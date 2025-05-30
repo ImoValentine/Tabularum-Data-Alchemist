@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Analysis Result - Tabularum Data Alchemist</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: url('/static/bg.jpg') no-repeat center center fixed;
+            background-size: cover;
+            color: #000;
+        }
+        .content {
+            background: rgba(255,255,255,0.8);
+            padding: 20px;
+            border-radius: 8px;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        #downloadBtn {
+            display: block;
+            margin: 20px auto;
+            padding: 15px 30px;
+            font-size: 1.4em;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            text-decoration: none;
+            background-color: #dc3545;
+        }
+        #downloadNote {
+            font-size: 10px;
+            text-align: center;
+            margin-top: 5px;
+            color: #333;
+        }
+        footer {
+            background-color: #f0f0f0;
+            color: #555;
+            text-align: center;
+            padding: 10px 0;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <h1>Analysis Result</h1>
+        <h2>AI Responses</h2>
+        <div id="aiResponsesContainer">
+            {% if aiResponses %}
+                {% for model, response in aiResponses.items() %}
+                    <h3>{{ model }}</h3>
+                    <p>{{ response }}</p>
+                {% endfor %}
+            {% else %}
+                <p>No AI responses available.</p>
+            {% endif %}
+        </div>
+        <h2>Consensus Summary</h2>
+        <p>{{ resolutionSummary }}</p>
+        <h2>Data Analysis Summary</h2>
+        <pre>{{ analysisSummary }}</pre>
+        <!-- Download Button -->
+        <a id="downloadBtn" href="/download/zip" download>Download Processed Files</a>
+        <p id="downloadNote">Download will consist of a zipped file containing the cleaned .xlsx and report (with analysis and AI insights)</p>
+        <a href="/">Return to Input</a>
+    </div>
+    <footer>
+        Built by Imraan Jacobs - Jacobs Dynamic Development
+    </footer>
+    <script>
+        // Remove the setTimeout script as the button should be active on page load
+        /*
+        document.addEventListener("DOMContentLoaded", function(){
+            var btn = document.getElementById("downloadBtn");
+            setTimeout(function(){
+                btn.style.backgroundColor = "#28a745";
+                btn.style.pointerEvents = "auto";
+            }, 3000);
+        });
+        */
+    </script>
+</body>
+</html>
