@@ -29,8 +29,8 @@ sess = Session() # Create a Session instance
 sess.init_app(app) # Initialize the Session extension with the app
 
 # --- API Keys ---
-GEMINI_API_KEY = "AIzaSyD83zv-aW-WaapmpkXFAlto5IohJ73aCHA" # Replace with your actual Gemini API Key
-GROK_API_KEY = "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"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GROK_API_KEY = os.getenv("GROK_API_KEY")
 
 # --- Default Report Template ---
 DEFAULT_REPORT = """
