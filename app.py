@@ -7,13 +7,18 @@ import time
 import io
 import zipfile
 import pandas as pd
+import matplotlib
+
+# Set the matplotlib backend to Agg (non-GUI) to avoid GUI initialization in non-main threads
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 from flask import Flask, request, render_template, jsonify, session, redirect, send_file
 from flask_session import Session
-import re # Import the re module for regular expressions
-from openpyxl import load_workbook # Import load_workbook directly
-import shutil # Import shutil for removing files and directories
+import re  # Import the re module for regular expressions
+from openpyxl import load_workbook  # Import load_workbook directly
+import shutil  # Import shutil for removing files and directories
 
 # --- Logging Setup ---
 logging.basicConfig(level=logging.INFO)
@@ -24,9 +29,9 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20 MB limit
 app.config["SESSION_TYPE"] = "filesystem"  # Use server-side sessions
-app.config["SESSION_COOKIE_NAME"] = "tabularum_session" # Set a name for the session cookie
-sess = Session() # Create a Session instance
-sess.init_app(app) # Initialize the Session extension with the app
+app.config["SESSION_COOKIE_NAME"] = "tabularum_session"  # Set a name for the session cookie
+sess = Session()  # Create a Session instance
+sess.init_app(app)  # Initialize the Session extension with the app
 
 # --- API Keys ---
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -119,24 +124,33 @@ def process_analysis_report(report_text, selected_columns=None):
 
 def clean_and_analyze_data(df):
     try:
-        logger.info("Initial data preview:\n%s", df.head(15).to_string())
-        logger.info("Data types:\n%s", df.dtypes.to_string())
-        logger.info("Missing values:\n%s", df.isnull().sum().to_string())
-        logger.info("Basic statistics:\n%s", df.describe().to_string())
-        
+        # logger.info("Initial data preview:\n%s", df.head(15).to_string())
+        # logger.info("Data types:\n%s", df.dtypes.to_string())
+        # logger.info("Missing values:\n%s", df.isnull().sum().to_string())
+        # logger.info("Basic statistics:\n%s", df.describe().to_string())
+
+        initial_missing_values = df.isnull().sum()
+        initial_rows = len(df)
+
         df['Cost Center Number'] = df['Cost Center Number'].fillna('Unknown')
         df['Supplier City'] = df['Supplier City'].fillna('Unknown')
         df['Document Date'] = pd.to_datetime(df['Document Date'], errors='coerce')
         df['Spend Amount'] = pd.to_numeric(df['Spend Amount'], errors='coerce')
-        initial_rows = len(df)
+
+        # Recalculate missing values after filling
+        missing_values_after_fill = df.isnull().sum()
+        filled_columns = initial_missing_values[initial_missing_values > missing_values_after_fill]
+        filled_summary = ", ".join([f"{col} ({initial_missing_values[col]} blanks filled)" for col in filled_columns.index])
+
         df_cleaned = df.drop_duplicates()
         duplicates_removed = initial_rows - len(df_cleaned)
-        logger.info("Duplicates removed: %d", duplicates_removed)
-        logger.info("Cleaned dataset shape: %s", str(df_cleaned.shape))
+        # logger.info("Duplicates removed: %d", duplicates_removed)
+        # logger.info("Cleaned dataset shape: %s", str(df_cleaned.shape))
         
-        cleaned_csv = "cleaned_spend_analysis.csv"
-        df_cleaned.to_csv(cleaned_csv, index=False)
-        logger.info("Cleaned dataset saved as '%s'", cleaned_csv)
+        cleaned_filepath = os.path.join("temp", f"cleaned_{os.path.basename(session.get('uploaded_filepath', 'data'))}.xlsx")
+        df_cleaned.to_excel(cleaned_filepath, index=False)
+        session["cleaned_filepath"] = cleaned_filepath
+        # logger.info("Cleaned data saved to %s", cleaned_filepath)
         
         if "MIIN Code" in df_cleaned.columns:
             df_cleaned["MIIN Code"] = df_cleaned["MIIN Code"].astype(str).str.zfill(5)
@@ -144,7 +158,7 @@ def clean_and_analyze_data(df):
         if set(["MIIN Code", "MIIN Code Description", "Spend Amount"]).issubset(df_cleaned.columns):
             miin_top5 = df_cleaned.groupby(["MIIN Code", "MIIN Code Description"])["Spend Amount"].sum().reset_index()
             miin_top5 = miin_top5.sort_values("Spend Amount", ascending=False).head(5)
-            logger.info("Top 5 MIIN Codes by Spend:\n%s", miin_top5.to_string(index=False))
+            # logger.info("Top 5 MIIN Codes by Spend:\n%s", miin_top5.to_string(index=False))
         else:
             miin_top5 = pd.DataFrame()
         
@@ -157,7 +171,7 @@ def clean_and_analyze_data(df):
         outlier_info = (f"Total outliers: {len(outliers)} "
                         f"({round(len(outliers)/len(df_cleaned)*100, 1)}% of transactions). "
                         f"Range: below ${round(lower_bound,2)} or above ${round(upper_bound,2)}.")
-        logger.info("Outlier analysis: %s", outlier_info)
+        # logger.info("Outlier analysis: %s", outlier_info)
         
         if set(["Store Number", "Store Description", "Spend Amount"]).issubset(df_cleaned.columns):
             store_spend = df_cleaned.groupby(["Store Number", "Store Description"])["Spend Amount"].sum().reset_index()
@@ -185,12 +199,19 @@ def clean_and_analyze_data(df):
         chart_file = "spend_analysis_charts.png"
         plt.savefig(chart_file, dpi=300, bbox_inches="tight")
         plt.close()
-        logger.info("Visualization saved as '%s'", chart_file)
+        # logger.info("Visualization saved as '%s'", chart_file)
         
         total_spend = df_cleaned["Spend Amount"].sum() if "Spend Amount" in df_cleaned.columns else 0
         avg_transaction = df_cleaned["Spend Amount"].mean() if "Spend Amount" in df_cleaned.columns else 0
         summary_text = (f"Analysis complete. Total Spend: ${total_spend:,.2f}. "
-                        f"Average Transaction: ${avg_transaction:,.2f}.\n{outlier_info}\n")
+                        f"Average Transaction: ${avg_transaction:,.2f}.\n\n"
+                        f"--- Data Cleaning Summary ---\n"
+                        f"Duplicates removed: {duplicates_removed}\n")
+        if filled_summary:
+             summary_text += f"Missing values filled in: {filled_summary}\n"
+
+        summary_text += f"{outlier_info}\n"
+
         if not miin_top5.empty:
             summary_text += "Top MIIN Codes by Spend:\n" + miin_top5.to_string(index=False) + "\n"
         if not store_spend.empty:
@@ -239,9 +260,9 @@ def upload():
                     item_path = os.path.join(temp_dir, item)
                     try:
                         if os.path.isfile(item_path) or os.path.islink(item_path):
-                            os.unlink(item_path) # Remove file or symbolic link
+                            os.unlink(item_path)  # Remove file or symbolic link
                         elif os.path.isdir(item_path):
-                            shutil.rmtree(item_path) # Remove directory and its contents
+                            shutil.rmtree(item_path)  # Remove directory and its contents
                     except Exception as e:
                         logger.error("Error removing item %s from temp directory: %s", item_path, e)
 
@@ -253,13 +274,13 @@ def upload():
             # Use the absolute path for the temporary file path
             temp_filepath = os.path.join(abs_temp_dir, safe_filename)
             
-            logger.info("Attempting to save file to: %s", temp_filepath) # Log before saving
+            logger.info("Attempting to save file to: %s", temp_filepath)  # Log before saving
             try:
                 # Manually read and write the file content
                 with open(temp_filepath, 'wb') as f:
-                    uploaded_file.stream.seek(0) # Ensure stream is at the beginning
+                    uploaded_file.stream.seek(0)  # Ensure stream is at the beginning
                     f.write(uploaded_file.stream.read())
-                logger.info("Temporary file successfully saved to: %s", temp_filepath) # Log on successful save
+                logger.info("Temporary file successfully saved to: %s", temp_filepath)  # Log on successful save
                 session["uploaded_filepath"] = temp_filepath
                 
                 # --- Add verification step immediately after saving ---
@@ -267,7 +288,7 @@ def upload():
                     logger.info(f"Attempting to verify saved file by opening: {temp_filepath}")
                     with open(temp_filepath, "rb") as f:
                         # Try reading a small part of the file
-                        f.read(100) # Read first 100 bytes
+                        f.read(100)  # Read first 100 bytes
                     logger.info(f"Verification of saved file successful: {temp_filepath}")
                 except Exception as verify_exc:
                     logger.error(f"Verification of saved file failed {temp_filepath}: {verify_exc}", exc_info=True)
@@ -363,8 +384,8 @@ def analyze():
 
         # Save cleaned data to a temporary file (e.g., CSV or Excel)
         # Using CSV for simplicity, can change to Excel if needed
-        cleaned_filepath = os.path.join("temp", f"cleaned_{os.path.basename(filepath)}.csv")
-        cleaned_df.to_csv(cleaned_filepath, index=False)
+        cleaned_filepath = os.path.join("temp", f"cleaned_{os.path.basename(filepath)}.xlsx")
+        cleaned_df.to_excel(cleaned_filepath, index=False)
         session["cleaned_filepath"] = cleaned_filepath
         logger.info("Cleaned data saved to %s", cleaned_filepath)
 

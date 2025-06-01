@@ -20,7 +20,7 @@
         }
         .marquee-track {
             display: inline-block;
-            animation: marquee 15s linear infinite;
+            animation: marquee 30s linear infinite;
         }
         @keyframes marquee {
             0% { transform: translate(0, 0); }
@@ -28,14 +28,29 @@
         }
         .heading {
             text-align: center;
-            font-size: 2.5em;
+            font-size: 48px;
+            font-family: 'Georgia', serif; 
             color: #fff;
             padding-top: 30px;
             margin: 10px 0;
             text-shadow: 2px 2px 4px #000;
         }
+        /* Wrap dropzone and image in a flex container */
+        .dropzone-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            margin: 30px auto;
+            max-width: 800px;
+        }
+        /* Override dropzone form margin within the flex container */
+        .dropzone-container form {
+            margin: 0;
+        }
+        /* Existing dropzone styling */
         #file-dropzone {
-            margin: 20px auto;
+            /* Remove margin auto as it is now managed by the container */
             width: 50%;
             max-width: 400px;
             border: 2px dashed #fff;
@@ -99,37 +114,137 @@
         .modal-content h2 {
             margin-top: 0;
         }
+        /* New Loader Styles */
+        .loader {
+            width: 150px;
+            height: 150px;
+            background-color: #ff3d00;
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 0 30px 4px rgba(0, 0, 0, 0.5) inset,
+              0 5px 12px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .loader:before,
+        .loader:after {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 45%;
+            top: -40%;
+            background-color: #fff;
+            animation: wave 5s linear infinite;
+        }
+        .loader:before {
+            border-radius: 30%;
+            background: rgba(255, 255, 255, 0.4);
+            animation: wave 5s linear infinite;
+        }
+        @keyframes wave {
+            0% {
+              transform: rotate(0);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
+        }
+        .loader-percentage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            color: #333;
+            z-index: 1;
+            text-align: center;
+        }
+        .loading-message {
+            margin: 8px 0;
+            transition: opacity 1s ease-in-out;
+            opacity: 0;
+        }
+        .loading-message.fade-in {
+            opacity: 1;
+        }
+        /* End of New Loader CSS */
+
+        /* NEW: Style for the mad scientist image with an overlay to fade edges to black */
+        .image-blurred-edge {
+            position: relative;
+            background-image: url('/static/mad_scientist.jpg');
+            width: 200px;
+            height: 200px;
+            border-radius: 15px;
+            background-size: cover;
+            background-position: center;
+        }
+        .image-blurred-edge::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 15px;
+            /* Adjusted gradient: fades from transparent at 70% to 70% opaque black at the edges */
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0) 70%, rgba(0,0,0,0.7) 100%);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
     <!-- Infinite marquee -->
     <div class="marquee-wrapper">
         <div class="marquee-track">
-            <span>AI- Agent007, reliable solutions, consensus logic, Groq, Huggingface, Gemini, Making solutions easier, Reducing operational costs, Deriving insights&nbsp;&nbsp;&nbsp;</span>
-            <span>AI- Agent007, reliable solutions, consensus logic, Groq, Huggingface, Gemini, Making solutions easier, Reducing operational costs, Deriving insights</span>
+            <span>AI- Agent007, reliable solutions, consensus logic, Groq,  Gemini, Making Data solutions easier, Reducing operational costs, Deriving insights, &nbsp;&nbsp;&nbsp;</span>
+            <span>AI- Agent007, reliable solutions, consensus logic, Groq,  Gemini, Making Data solutions easier, Reducing operational costs, Deriving insights</span>
         </div>
     </div>
 
     <!-- Centered heading -->
     <div class="heading">Tabularum Data Alchemist</div>
 
-    <!-- File dropzone -->
-    <form action="/upload" class="dropzone" id="file-dropzone" method="POST" enctype="multipart/form-data">
-        <div class="fallback">
-            <input name="file" type="file" accept=".xls,.xlsx" />
-        </div>
-        <p>Drag and drop your .XLS spreadsheet here.</p>
-    </form>
+    <!-- New container for the scientist image and the file dropzone -->
+    <div class="dropzone-container">
+        <!-- Mad Scientist Image with overlay fading edges to black -->
+        <div class="image-blurred-edge"></div>
+        <!-- File dropzone -->
+        <form action="/upload" class="dropzone" id="file-dropzone" method="POST" enctype="multipart/form-data">
+            <div class="fallback">
+                <input name="file" type="file" accept=".xls,.xlsx" />
+            </div>
+            <p>Drag and drop your .XLS spreadsheet here.</p>
+        </form>
+    </div>
 
     <!-- Upload progress -->
     <progress id="uploadProgress" max="100"></progress>
     <p id="uploadMessage"></p>
-    
+
     <!-- Analysis progress -->
     <progress id="analysisProgress" max="100"></progress>
 
     <!-- Begin Analysis button -->
-    <button id="beginBtn">Begin Alchemy - Analyze</button>
+    <button id="beginBtn">Click to Begin Alchemy - Alchemyze - Analyze</button>
+
+    <!-- Generating Report Spinner and Message (Initially Hidden) -->
+    <div id="generatingReportOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); z-index: 1000; justify-content: center; align-items: center; flex-direction: column;">
+        <div class="loader">
+            <span class="loader-percentage">0%</span>
+        </div>
+        <div id="loadingMessages" style="color: white; margin-top: 20px; font-size: 1.2em; text-align: center;">
+            <p class="loading-message">Mixing the potions...</p>
+            <p class="loading-message">Cleaning Data...</p>
+            <p class="loading-message">Deriving insights...</p>
+            <p class="loading-message">Generating Report...</p>
+            <p class="loading-message">Larger excel sheets, or those with over 10 000 transactions take a bit longer</p>
+            <p class="loading-message">Generating files for download...</p>
+        </div>
+    </div>
 
     <!-- Modal for confirming columns -->
     <div id="columnsModal" class="modal">
@@ -167,7 +282,6 @@
                     msg.innerText = "Upload complete";
 
                     // Process the response directly from the Dropzone upload
-                    // The response is already a parsed JSON object if your backend returns JSON with the correct Content-Type header
                     const data = response;
 
                     if (data.status === "success" && data.columns) {
@@ -188,20 +302,18 @@
                         });
                         document.getElementById("columnsModal").style.display = "block";
                     } else if (data.status === "error") {
-                         // Display the error message from the backend
-                         alert("Upload error: " + data.message);
-                         msg.innerText = "Upload failed: " + data.message;
+                        alert("Upload error: " + data.message);
+                        msg.innerText = "Upload failed: " + data.message;
                     }
                 });
 
-                 this.on("error", function(file, message) {
+                this.on("error", function(file, message) {
                     var msg = document.getElementById("uploadMessage");
                     msg.style.display = "block";
                     msg.innerText = "Upload failed: " + message;
                     console.error("Dropzone upload error:", message);
                     alert("Upload failed: " + message);
-                 });
-
+                });
             }
         };
 
@@ -228,6 +340,34 @@
             .catch(error => console.error("Error confirming columns:", error));
         });
 
+        // Array to hold message timeout IDs so we can clear them
+        let messageTimeouts = [];
+
+        // Function to display messages sequentially
+        function displayLoadingMessages() {
+            const messages = document.querySelectorAll('#loadingMessages .loading-message');
+            const delay = 1500; // Delay between messages appearing (in ms)
+
+            messages.forEach((msg, index) => {
+                if (messageTimeouts[index]) {
+                    clearTimeout(messageTimeouts[index]);
+                }
+                messageTimeouts[index] = setTimeout(() => {
+                    msg.classList.add('fade-in');
+                }, delay * (index + 1));
+            });
+        }
+
+        // Function to hide all messages and clear timeouts
+        function hideLoadingMessages() {
+            const messages = document.querySelectorAll('#loadingMessages .loading-message');
+            messages.forEach(msg => {
+                msg.classList.remove('fade-in');
+            });
+            messageTimeouts.forEach(timeoutId => clearTimeout(timeoutId));
+            messageTimeouts = [];
+        }
+
         // Begin Analysis Button
         document.getElementById("beginBtn").addEventListener("click", function() {
             var uploadMsg = document.getElementById("uploadMessage").innerText;
@@ -235,25 +375,61 @@
                 alert("Please complete file upload first.");
                 return;
             }
+
             var analysisProgress = document.getElementById("analysisProgress");
+            var generatingReportOverlay = document.getElementById("generatingReportOverlay");
+            var loaderPercentage = generatingReportOverlay.querySelector('.loader-percentage');
+
             analysisProgress.style.display = "block";
             analysisProgress.value = 0;
             var progress = 0;
+
             var interval = setInterval(function(){
                 progress += 5;
                 analysisProgress.value = progress;
+
                 if (progress >= 100) {
                     clearInterval(interval);
+                    analysisProgress.style.display = "none";
+                    generatingReportOverlay.style.display = "flex";
+                    hideLoadingMessages();
+                    displayLoadingMessages();
+
+                    var reportProgress = 0;
+                    var reportInterval = setInterval(function() {
+                        reportProgress += 2;
+                        if (reportProgress < 90) {
+                            loaderPercentage.innerText = reportProgress + '%';
+                        } else {
+                            loaderPercentage.innerText = '90%';
+                        }
+                    }, 300);
+
                     fetch("/analyze", { method: "POST" })
                         .then(response => response.json())
                         .then(data => {
-                            if (data.status === "success") {
-                                window.location.href = "/result";
-                            } else {
-                                alert("Error during analysis: " + data.message);
-                            }
+                            clearInterval(reportInterval);
+                            hideLoadingMessages();
+                            loaderPercentage.innerText = '100%';
+                            setTimeout(function() {
+                                generatingReportOverlay.style.display = "none";
+                                if (data.status === "success") {
+                                    window.location.href = "/result";
+                                } else {
+                                    alert("Error during analysis: " + data.message);
+                                }
+                            }, 300);
                         })
-                        .catch(error => console.error("Analysis error:", error));
+                        .catch(error => {
+                            clearInterval(reportInterval);
+                            hideLoadingMessages();
+                            loaderPercentage.innerText = 'Error!';
+                            setTimeout(function() {
+                                generatingReportOverlay.style.display = "none";
+                                console.error("Analysis error:", error);
+                                alert("An error occurred during analysis. Please check the console for details.");
+                            }, 300);
+                        });
                 }
             }, 150);
         });
